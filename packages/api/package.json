@@ -24,29 +24,29 @@
     "seed:all": "pnpm seed:admin && pnpm seed:test"
   },
   "dependencies": {
-    "@hono/node-server": "2.1.5",
-    "@hono/swagger-ui": "0.6.1",
+    "@hono/node-server": "2.1.6",
+    "@hono/swagger-ui": "0.6.2",
     "@hono/zod-openapi": "1.6.3",
     "@nodea/shared": "workspace:*",
     "@serenity-kit/opaque": "1.1.0",
-    "@simplewebauthn/server": "14.0.3",
+    "@simplewebauthn/server": "14.1.0",
     "drizzle-orm": "^0.45.4",
-    "hono": "4.13.13",
+    "hono": "4.13.17",
     "node-cron": "4.6.0",
-    "nodemailer": "^10.1.1",
-    "otplib": "13.5.0",
+    "nodemailer": "^10.3.1",
+    "otplib": "13.6.0",
     "postgres": "^3.4.9",
-    "puppeteer": "25.14.0",
-    "undici": "^8.12.2",
+    "puppeteer": "25.16.0",
+    "undici": "^8.12.4",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "24.13.5",
+    "@types/node": "24.19.2",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.2",
     "drizzle-kit": "^0.31.11",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   }
 }
